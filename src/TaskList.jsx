@@ -1,6 +1,9 @@
 import "./TaskList.css";
 
 function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChange }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   if (loading) {
     return (
       <section className="task-card">
@@ -25,8 +28,17 @@ function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChang
       </header>
 
       <div className="task-list">
-        {tasks.map((task) => (
-          <article className="task-item" key={task.id}>
+        {tasks.map((task) => {
+          const isOverdue =
+            task.status !== "Atlikta" &&
+            task.deadline &&
+            new Date(`${task.deadline}T00:00:00`) < today;
+
+          return (
+          <article
+            className={`task-item${isOverdue ? " task-item--overdue" : ""}`}
+            key={task.id}
+          >
             <div className="task-item__top">
               <h3>{task.title}</h3>
 
@@ -49,7 +61,7 @@ function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChang
               </label>
             </div>
 
-            <label className="task-deadline">
+            <label className={`task-deadline${isOverdue ? " task-deadline--overdue" : ""}`}>
               <span>Terminas:</span>
               <input
                 type="date"
@@ -61,7 +73,8 @@ function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChang
               />
             </label>
           </article>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

@@ -47,6 +47,15 @@
   transform: translateY(-1px);
 }
 
+.task-item--overdue {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.task-item--overdue:hover {
+  border-color: #f87171;
+}
+
 .task-item__top {
   display: flex;
   align-items: flex-start;
@@ -99,6 +108,15 @@
   margin: 10px 0 0;
   font-size: 14px;
   color: var(--text);
+}
+
+.task-deadline--overdue,
+.task-deadline--overdue input {
+  color: #f87171;
+}
+
+.task-deadline--overdue input {
+  border-color: rgba(239, 68, 68, 0.65);
 }
 
 .task-deadline input {
