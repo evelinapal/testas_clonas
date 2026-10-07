@@ -30,7 +30,7 @@ function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChang
       <div className="task-list">
         {tasks.map((task) => {
           const isOverdue =
-            task.status !== "Atlikta" &&
+            ["Vykdoma", "Nepradėta"].includes(task.status) &&
             task.deadline &&
             new Date(`${task.deadline}T00:00:00`) < today;
 

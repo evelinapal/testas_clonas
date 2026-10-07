@@ -48,8 +48,7 @@
 }
 
 .task-item--overdue {
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.08);
+  border: 2px solid #ef4444;
 }
 
 .task-item--overdue:hover {
