@@ -37,9 +37,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg);
-  transition:
-    border-color 0.2s,
-    transform 0.15s;
+  transition: border-color 0.2s, transform 0.15s;
 }
 
 .task-item:hover {
@@ -83,7 +81,9 @@
   font-family: inherit;
 }
 
-.task-status:focus-visible {
+.task-status:focus-visible,
+.task-deadline input:focus-visible,
+.task-delete-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -130,9 +130,20 @@
   cursor: pointer;
 }
 
-.task-deadline input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.task-delete-button {
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 7px;
+  background: transparent;
+  color: #f87171;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.task-delete-button:hover {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .task-state {

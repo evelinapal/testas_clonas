@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TaskList from "./TaskList";
 import ProgressBar from "./ProgressBar";
 import Navbar from "./Navbar";
 import AddTaskForm from "./AddTaskForm";
 import Profile from "./Profile";
+import { createTask, deleteTask, getTasks, updateTask } from "./tasksApi";
 import "./App.css";
 
 function App() {
@@ -17,21 +18,30 @@ function App() {
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+  const [tasksError, setTasksError] = useState("");
 
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Sukurti prisijungimo formą",
-      status: "Atlikta",
-      deadline: "2026-10-01",
-    },
-    {
-      id: 2,
-      title: "Sukurti užduočių sąrašą",
-      status: "Vykdoma",
-      deadline: "2026-10-05",
-    },
-  ]);
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadTasks() {
+      setIsLoadingTasks(true);
+      setTasksError("");
+
+      try {
+        const loadedTasks = await getTasks();
+        if (isActive) setTasks(loadedTasks);
+      } catch (error) {
+        if (isActive) setTasksError(error.message || "Nepavyko gauti užduočių.");
+      } finally {
+        if (isActive) setIsLoadingTasks(false);
+      }
+    }
+
+    loadTasks();
+    return () => { isActive = false; };
+  }, []);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -45,36 +55,51 @@ function App() {
     setLoginError("Neteisingas vartotojo vardas arba slaptažodis.");
   }
 
-  function handleAddTask(newTask) {
-    setTasks((currentTasks) => [...currentTasks, newTask]);
+  async function handleAddTask(task) {
+    setTasksError("");
+    try {
+      const createdTask = await createTask(task);
+      setTasks((currentTasks) => [...currentTasks, createdTask]);
+    } catch (error) {
+      setTasksError(error.message || "Nepavyko pridėti užduoties.");
+      throw error;
+    }
   }
 
-  function handleTaskStatusChange(taskId, status) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, status } : task,
-      ),
-    );
+  async function handleUpdateTask(taskId, updates) {
+    const currentTask = tasks.find((task) => String(task.id) === String(taskId));
+    if (!currentTask) return;
+
+    const updatedTask = { ...currentTask, ...updates };
+    setTasksError("");
+    try {
+      const savedTask = await updateTask(taskId, updatedTask);
+      setTasks((currentTasks) => currentTasks.map((task) =>
+        String(task.id) === String(taskId) ? { ...task, ...savedTask, ...updatedTask } : task,
+      ));
+    } catch (error) {
+      setTasksError(error.message || "Nepavyko atnaujinti užduoties.");
+    }
   }
 
-  function handleTaskDeadlineChange(taskId, deadline) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, deadline } : task,
-      ),
-    );
+  async function handleDeleteTask(taskId) {
+    setTasksError("");
+    try {
+      await deleteTask(taskId);
+      setTasks((currentTasks) => currentTasks.filter(
+        (task) => String(task.id) !== String(taskId),
+      ));
+    } catch (error) {
+      setTasksError(error.message || "Nepavyko ištrinti užduoties.");
+    }
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const completedTaskCount = tasks.filter(
-    (task) => task.status === "Atlikta",
-  ).length;
+  const completedTaskCount = tasks.filter((task) => task.status === "Atlikta").length;
   const overdueTaskCount = tasks.filter((task) => {
     if (task.status === "Atlikta" || !task.deadline) return false;
-
-    const deadline = new Date(`${task.deadline}T00:00:00`);
-    return deadline < today;
+    return new Date(`${task.deadline}T00:00:00`) < today;
   }).length;
 
   return (
@@ -93,50 +118,39 @@ function App() {
           <main className="login-page">
             {!isLoggedIn && (
               <div className="login-card">
-                <>
-                  <header className="login-card__header">
-                    <h1>Prisijungti</h1>
-                    <p>Įveskite savo duomenis, kad tęstumėte</p>
-                  </header>
+                <header className="login-card__header">
+                  <h1>Prisijungti</h1>
+                  <p>Įveskite savo duomenis, kad tęstumėte</p>
+                </header>
 
-                  <form className="login-form" onSubmit={handleSubmit}>
-                    <label className="login-field">
-                      <span>Vartotojo vardas</span>
-                      <input
-                        type="text"
-                        name="username"
-                        autoComplete="username"
-                        placeholder="admin"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        required
-                      />
-                    </label>
-
-                    <label className="login-field">
-                      <span>Slaptažodis</span>
-                      <input
-                        type="password"
-                        name="password"
-                        autoComplete="current-password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
-                      />
-                    </label>
-
-                    <button type="submit" className="login-submit">
-                      Prisijungti
-                    </button>
-
-                    {loginError && (
-                      <p className="login-error" role="alert">
-                        {loginError}
-                      </p>
-                    )}
-                  </form>
-                </>
+                <form className="login-form" onSubmit={handleSubmit}>
+                  <label className="login-field">
+                    <span>Vartotojo vardas</span>
+                    <input
+                      type="text"
+                      name="username"
+                      autoComplete="username"
+                      placeholder="admin"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="login-field">
+                    <span>Slaptažodis</span>
+                    <input
+                      type="password"
+                      name="password"
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <button type="submit" className="login-submit">Prisijungti</button>
+                  {loginError && <p className="login-error" role="alert">{loginError}</p>}
+                </form>
               </div>
             )}
 
@@ -152,15 +166,15 @@ function App() {
                   </p>
                 </section>
 
+                {tasksError && <p className="login-error" role="alert">{tasksError}</p>}
                 <TaskList
                   tasks={tasks}
-                  loading={false}
-                  onStatusChange={handleTaskStatusChange}
-                  onDeadlineChange={handleTaskDeadlineChange}
+                  loading={isLoadingTasks}
+                  onStatusChange={(id, status) => handleUpdateTask(id, { status })}
+                  onDeadlineChange={(id, deadline) => handleUpdateTask(id, { deadline })}
+                  onDelete={handleDeleteTask}
                 />
-
                 <AddTaskForm onAddTask={handleAddTask} />
-
                 <ProgressBar initialProgress={50} />
               </>
             )}

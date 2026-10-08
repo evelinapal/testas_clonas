@@ -1,6 +1,6 @@
 import "./TaskList.css";
 
-function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChange }) {
+function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChange, onDelete }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -35,44 +35,46 @@ function TaskList({ tasks = [], loading = false, onStatusChange, onDeadlineChang
             new Date(`${task.deadline}T00:00:00`) < today;
 
           return (
-          <article
-            className={`task-item${isOverdue ? " task-item--overdue" : ""}`}
-            key={task.id}
-          >
-            <div className="task-item__top">
-              <h3>{task.title}</h3>
+            <article
+              className={`task-item${isOverdue ? " task-item--overdue" : ""}`}
+              key={task.id}
+            >
+              <div className="task-item__top">
+                <h3>{task.title}</h3>
+                <label className="task-status-field">
+                  <span className="visually-hidden">Užduoties statusas</span>
+                  <select
+                    className={`task-status task-status--${task.status.toLowerCase().replace(" ", "-")}`}
+                    value={task.status}
+                    onChange={(event) => onStatusChange?.(task.id, event.target.value)}
+                    aria-label={`Keisti užduoties „${task.title}“ statusą`}
+                  >
+                    <option value="Nepradėta">Nepradėta</option>
+                    <option value="Vykdoma">Vykdoma</option>
+                    <option value="Atlikta">Atlikta</option>
+                  </select>
+                </label>
+              </div>
 
-              <label className="task-status-field">
-                <span className="visually-hidden">Užduoties statusas</span>
-                <select
-                  className={`task-status task-status--${task.status
-                    .toLowerCase()
-                    .replace(" ", "-")}`}
-                  value={task.status}
-                  onChange={(event) =>
-                    onStatusChange?.(task.id, event.target.value)
-                  }
-                  aria-label={`Keisti užduoties „${task.title}“ statusą`}
-                >
-                  <option value="Nepradėta">Nepradėta</option>
-                  <option value="Vykdoma">Vykdoma</option>
-                  <option value="Atlikta">Atlikta</option>
-                </select>
+              <label className={`task-deadline${isOverdue ? " task-deadline--overdue" : ""}`}>
+                <span>Terminas:</span>
+                <input
+                  type="date"
+                  value={task.deadline}
+                  onChange={(event) => onDeadlineChange?.(task.id, event.target.value)}
+                  aria-label={`Keisti užduoties „${task.title}“ terminą`}
+                />
               </label>
-            </div>
 
-            <label className={`task-deadline${isOverdue ? " task-deadline--overdue" : ""}`}>
-              <span>Terminas:</span>
-              <input
-                type="date"
-                value={task.deadline}
-                onChange={(event) =>
-                  onDeadlineChange?.(task.id, event.target.value)
-                }
-                aria-label={`Keisti užduoties „${task.title}“ terminą`}
-              />
-            </label>
-          </article>
+              <button
+                type="button"
+                className="task-delete-button"
+                onClick={() => onDelete?.(task.id)}
+                aria-label={`Ištrinti užduotį „${task.title}“`}
+              >
+                Ištrinti
+              </button>
+            </article>
           );
         })}
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import "./AddTaskForm.css";
 
 function AddTaskForm({ onAddTask }) {
@@ -6,40 +6,39 @@ function AddTaskForm({ onAddTask }) {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [status, setStatus] = useState("Nepradėta");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    setIsSaving(true);
+    setError("");
 
-    const newTask = {
-      id: Date.now(),
-      title,
-      status,
-      deadline,
-    };
-
-    onAddTask(newTask);
-
-    setTitle("");
-    setDeadline("");
-    setStatus("Nepradėta");
-    setIsOpen(false);
+    try {
+      await onAddTask({ title, status, deadline });
+      setTitle("");
+      setDeadline("");
+      setStatus("Nepradėta");
+      setIsOpen(false);
+    } catch (saveError) {
+      setError(saveError.message || "Nepavyko išsaugoti užduoties.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleCancel() {
     setTitle("");
     setDeadline("");
     setStatus("Nepradėta");
+    setError("");
     setIsOpen(false);
   }
 
   if (!isOpen) {
     return (
       <div className="add-task">
-        <button
-          type="button"
-          className="add-task__open-button"
-          onClick={() => setIsOpen(true)}
-        >
+        <button type="button" className="add-task__open-button" onClick={() => setIsOpen(true)}>
           + Nauja užduotis
         </button>
       </div>
@@ -54,13 +53,7 @@ function AddTaskForm({ onAddTask }) {
             <h2>Nauja užduotis</h2>
             <p>Pridėkite naują užduotį į savo sąrašą</p>
           </div>
-
-          <button
-            type="button"
-            className="add-task__close"
-            onClick={handleCancel}
-            aria-label="Uždaryti"
-          >
+          <button type="button" className="add-task__close" onClick={handleCancel} aria-label="Uždaryti">
             ×
           </button>
         </div>
@@ -68,7 +61,6 @@ function AddTaskForm({ onAddTask }) {
         <form className="add-task__form" onSubmit={handleSubmit}>
           <label className="add-task__field">
             <span>Užduoties pavadinimas</span>
-
             <input
               type="text"
               placeholder="Pvz. Sukurti profilio puslapį"
@@ -77,10 +69,8 @@ function AddTaskForm({ onAddTask }) {
               required
             />
           </label>
-
           <label className="add-task__field">
             <span>Terminas</span>
-
             <input
               type="date"
               value={deadline}
@@ -88,31 +78,22 @@ function AddTaskForm({ onAddTask }) {
               required
             />
           </label>
-
           <label className="add-task__field">
             <span>Statusas</span>
-
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
               <option value="Nepradėta">Nepradėta</option>
               <option value="Vykdoma">Vykdoma</option>
               <option value="Atlikta">Atlikta</option>
             </select>
           </label>
 
+          {error && <p className="login-error" role="alert">{error}</p>}
           <div className="add-task__actions">
-            <button
-              type="button"
-              className="add-task__cancel"
-              onClick={handleCancel}
-            >
+            <button type="button" className="add-task__cancel" onClick={handleCancel} disabled={isSaving}>
               Atšaukti
             </button>
-
-            <button type="submit" className="add-task__submit">
-              Pridėti užduotį
+            <button type="submit" className="add-task__submit" disabled={isSaving}>
+              {isSaving ? "Saugoma..." : "Pridėti užduotį"}
             </button>
           </div>
         </form>
