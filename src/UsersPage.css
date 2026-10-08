@@ -1,0 +1,140 @@
+.users-page {
+  width: min(100%, 900px);
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  box-sizing: border-box;
+}
+
+.users-card {
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.users-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.users-card__eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.users-card__header h1 {
+  margin: 0 0 6px;
+  color: var(--text-h);
+  font-size: 28px;
+}
+
+.users-card__header p:last-child,
+.users-item__details p,
+.users-state {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.users-count {
+  min-width: 42px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  text-align: center;
+  font-weight: 700;
+}
+
+.users-list {
+  display: grid;
+  gap: 12px;
+}
+
+.users-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--bg);
+}
+
+.users-item__avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.users-item__details {
+  min-width: 0;
+  flex: 1;
+}
+
+.users-item__details h2 {
+  margin: 0 0 3px;
+  color: var(--text-h);
+  font-size: 16px;
+}
+
+.users-item__details p {
+  overflow-wrap: anywhere;
+}
+
+.users-item__role {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.users-state,
+.users-error {
+  padding: 20px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  line-height: 1.5;
+}
+
+.users-error {
+  display: grid;
+  gap: 8px;
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #f87171;
+}
+
+@media (max-width: 560px) {
+  .users-page {
+    padding: 24px 16px 36px;
+  }
+
+  .users-card {
+    padding: 20px 16px;
+  }
+
+  .users-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .users-item__role {
+    margin-left: 56px;
+  }
+}

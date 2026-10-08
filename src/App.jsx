@@ -4,33 +4,46 @@ import ProgressBar from "./ProgressBar";
 import Navbar from "./Navbar";
 import AddTaskForm from "./AddTaskForm";
 import Profile from "./Profile";
-import { createTask, deleteTask, getTasks, updateTask } from "./tasksApi";
+import UsersPage from "./UsersPage";
+import { loginUser, logoutUser, registerUser } from "./authApi";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { createUserTask, deleteUserTask, getUserTasks, updateUserTask } from "./userTasksApi";
 import "./App.css";
 
 function App() {
-  const user = {
-    name: "Jonas Jonaitis",
-    email: "jonas@flowly.lt",
-  };
-
   const [activePage, setActivePage] = useState("home");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loginError, setLoginError] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [session, setSession] = useState(null);
+  const [authError, setAuthError] = useState("");
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [tasks, setTasks] = useState([]);
-  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [tasksError, setTasksError] = useState("");
+  const currentUser = session?.user;
+  const currentUserId = currentUser?.id;
+  const displayName = currentUser?.user_metadata?.display_name || username || currentUser?.email?.split("@")[0] || "";
 
   useEffect(() => {
-    let isActive = true;
+    if (!isSupabaseConfigured) return undefined;
 
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+
+    let isActive = true;
     async function loadTasks() {
       setIsLoadingTasks(true);
       setTasksError("");
-
       try {
-        const loadedTasks = await getTasks();
+        const loadedTasks = await getUserTasks(currentUserId);
         if (isActive) setTasks(loadedTasks);
       } catch (error) {
         if (isActive) setTasksError(error.message || "Nepavyko gauti užduočių.");
@@ -38,28 +51,44 @@ function App() {
         if (isActive) setIsLoadingTasks(false);
       }
     }
-
     loadTasks();
     return () => { isActive = false; };
-  }, []);
+  }, [currentUserId]);
 
-  function handleSubmit(event) {
+  async function handleAuthSubmit(event) {
     event.preventDefault();
-
-    if (email === "admin" && password === "admin") {
-      setIsLoggedIn(true);
-      setLoginError("");
-      return;
+    setIsAuthLoading(true);
+    setAuthError("");
+    try {
+      if (isRegistering) {
+        await registerUser(username, password);
+      } else {
+        await loginUser(username, password);
+      }
+    } catch (error) {
+      setAuthError(error.message || "Nepavyko prisijungti.");
+    } finally {
+      setIsAuthLoading(false);
     }
+  }
 
-    setLoginError("Neteisingas vartotojo vardas arba slaptažodis.");
+  async function handleLogout() {
+    setAuthError("");
+    try {
+      await logoutUser();
+      setActivePage("home");
+      setPassword("");
+    } catch (error) {
+      setAuthError(error.message || "Nepavyko atsijungti.");
+    }
   }
 
   async function handleAddTask(task) {
+    if (!currentUser) return;
     setTasksError("");
     try {
-      const createdTask = await createTask(task);
-      setTasks((currentTasks) => [...currentTasks, createdTask]);
+      const created = await createUserTask(currentUser.id, task);
+      setTasks((current) => [...current, created]);
     } catch (error) {
       setTasksError(error.message || "Nepavyko pridėti užduoties.");
       throw error;
@@ -67,16 +96,10 @@ function App() {
   }
 
   async function handleUpdateTask(taskId, updates) {
-    const currentTask = tasks.find((task) => String(task.id) === String(taskId));
-    if (!currentTask) return;
-
-    const updatedTask = { ...currentTask, ...updates };
     setTasksError("");
     try {
-      const savedTask = await updateTask(taskId, updatedTask);
-      setTasks((currentTasks) => currentTasks.map((task) =>
-        String(task.id) === String(taskId) ? { ...task, ...savedTask, ...updatedTask } : task,
-      ));
+      const saved = await updateUserTask(taskId, updates);
+      setTasks((current) => current.map((task) => task.id === taskId ? saved : task));
     } catch (error) {
       setTasksError(error.message || "Nepavyko atnaujinti užduoties.");
     }
@@ -85,10 +108,8 @@ function App() {
   async function handleDeleteTask(taskId) {
     setTasksError("");
     try {
-      await deleteTask(taskId);
-      setTasks((currentTasks) => currentTasks.filter(
-        (task) => String(task.id) !== String(taskId),
-      ));
+      await deleteUserTask(taskId);
+      setTasks((current) => current.filter((task) => task.id !== taskId));
     } catch (error) {
       setTasksError(error.message || "Nepavyko ištrinti užduoties.");
     }
@@ -97,65 +118,26 @@ function App() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const completedTaskCount = tasks.filter((task) => task.status === "Atlikta").length;
-  const overdueTaskCount = tasks.filter((task) => {
-    if (task.status === "Atlikta" || !task.deadline) return false;
-    return new Date(`${task.deadline}T00:00:00`) < today;
-  }).length;
+  const overdueTaskCount = tasks.filter((task) => task.status !== "Atlikta" && task.deadline && new Date(`${task.deadline}T00:00:00`) < today).length;
 
   return (
     <>
-      <Navbar activePage={activePage} onNavigate={setActivePage} />
+      <Navbar
+        activePage={activePage}
+        onNavigate={setActivePage}
+        isLoggedIn={Boolean(session)}
+        onLogout={handleLogout}
+      />
 
       {activePage === "home" && (
         <>
-          {isLoggedIn && (
-            <header className="welcome-message">
-              <h1>Sveiki sugrįžę!</h1>
-              <p>Prisijungėte kaip admin.</p>
-            </header>
-          )}
-
-          <main className="login-page">
-            {!isLoggedIn && (
-              <div className="login-card">
-                <header className="login-card__header">
-                  <h1>Prisijungti</h1>
-                  <p>Įveskite savo duomenis, kad tęstumėte</p>
-                </header>
-
-                <form className="login-form" onSubmit={handleSubmit}>
-                  <label className="login-field">
-                    <span>Vartotojo vardas</span>
-                    <input
-                      type="text"
-                      name="username"
-                      autoComplete="username"
-                      placeholder="admin"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <label className="login-field">
-                    <span>Slaptažodis</span>
-                    <input
-                      type="password"
-                      name="password"
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <button type="submit" className="login-submit">Prisijungti</button>
-                  {loginError && <p className="login-error" role="alert">{loginError}</p>}
-                </form>
-              </div>
-            )}
-
-            {isLoggedIn && (
-              <>
+          {session ? (
+            <>
+              <header className="welcome-message">
+                <h1>Sveiki sugrįžę!</h1>
+                <p>Prisijungėte kaip {displayName}.</p>
+              </header>
+              <main className="login-page">
                 <section className="dashboard-summary" aria-label="Užduočių suvestinė">
                   <p>
                     <strong>{tasks.length} užduotys</strong>
@@ -165,7 +147,6 @@ function App() {
                     <strong>{overdueTaskCount} vėluoja</strong>
                   </p>
                 </section>
-
                 {tasksError && <p className="login-error" role="alert">{tasksError}</p>}
                 <TaskList
                   tasks={tasks}
@@ -175,14 +156,67 @@ function App() {
                   onDelete={handleDeleteTask}
                 />
                 <AddTaskForm onAddTask={handleAddTask} />
-                <ProgressBar initialProgress={50} />
-              </>
-            )}
-          </main>
+                <ProgressBar initialProgress={completedTaskCount} />
+              </main>
+            </>
+          ) : (
+            <main className="login-page">
+              <div className="login-card">
+                <header className="login-card__header">
+                  <h1>{isRegistering ? "Nauja paskyra" : "Prisijungti"}</h1>
+                  <p>{isRegistering ? "Sukurk paskyrą vardu ir slaptažodžiu" : "Įveskite savo vartotojo vardą ir slaptažodį"}</p>
+                </header>
+                {!isSupabaseConfigured && (
+                  <p className="login-error" role="alert">Supabase dar nenustatytas. Užpildyk .env.local pagal .env.example ir paleisk Vite iš naujo.</p>
+                )}
+                <form className="login-form" onSubmit={handleAuthSubmit}>
+                  <label className="login-field">
+                    <span>Vartotojo vardas</span>
+                    <input
+                      type="text"
+                      autoComplete="username"
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      minLength={3}
+                      required
+                    />
+                  </label>
+                  <label className="login-field">
+                    <span>Slaptažodis</span>
+                    <input
+                      type="password"
+                      autoComplete={isRegistering ? "new-password" : "current-password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </label>
+                  <button type="submit" className="login-submit" disabled={isAuthLoading || !isSupabaseConfigured}>
+                    {isAuthLoading ? "Palaukite..." : isRegistering ? "Registruotis" : "Prisijungti"}
+                  </button>
+                  {authError && <p className="login-error" role="alert">{authError}</p>}
+                </form>
+                <button
+                  type="button"
+                  className="auth-mode-toggle"
+                  onClick={() => { setIsRegistering((value) => !value); setAuthError(""); }}
+                >
+                  {isRegistering ? "Jau turi paskyrą? Prisijunk" : "Neturi paskyros? Registruokis"}
+                </button>
+              </div>
+            </main>
+          )}
         </>
       )}
 
-      {activePage === "profile" && <Profile user={user} tasks={tasks} />}
+      {activePage === "profile" && session && (
+        <Profile
+          user={{ name: displayName, email: currentUser.email || "" }}
+          tasks={tasks}
+        />
+      )}
+      {activePage === "users" && session && <UsersPage />}
     </>
   );
 }

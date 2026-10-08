@@ -204,3 +204,25 @@
     padding: 8px;
   }
 }
+
+.navbar__logout {
+  margin-left: 12px;
+  padding: 9px 13px;
+  border: 1px solid rgba(187, 123, 246, 0.4);
+  border-radius: 9px;
+  background: rgba(187, 123, 246, 0.12);
+  color: #f4f2f7;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.navbar__logout:hover {
+  background: rgba(187, 123, 246, 0.22);
+}
+
+@media (max-width: 580px) {
+  .navbar__logout {
+    margin: 10px 0 0;
+  }
+}
